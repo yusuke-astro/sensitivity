@@ -1,12 +1,12 @@
 """
-このプログラムは長谷部さんのノートにより定義されたPoptをLFTが観測する各周波数に渡って積分して，長谷部さんの計算結果とプロットして比較する．
-23行目のswitchを0 or 1にとることで，Pixel pich:Dを変更することができる．
+このプログラムはsense_03_module.pyで標準出力させていた計算結果をcsv出力できるようにしたものである．
 """
 
 import  numpy as np
 from scipy import integrate
 from my_module import my_sens_func as st
 import matplotlib.pyplot as plt
+import pandas as pd
 
 GHz = 1e9
 p = 1e-12
@@ -19,7 +19,7 @@ h = 6.62607004*10**(-34)
 k_B = 1.38064852*10**(-23)
 c = 299792458
 ############################################
-switch = 0
+switch = 1
 #freqに対してDが2つあるところがある
 def define_D(f):
     #周波数に対してDが2つ存在するところで，使用するDの値を24にするか16にするかを決める仮想パラメータ
@@ -133,49 +133,29 @@ if switch == 0:
 
 freq = np.array([40,60,78,50,68,89,119,100,140])*GHz
 
-print("\nIn the LFT freqency...")
+print("CSV-file generated...")
 INTEGRATE = []
-for i in range(len(freq)):
-    F = freq[i]
-    D = define_D(F)
-    WL = c/freq[i]
-    BW = st.width(F)
-    print("\nFreq = {}GHz, Band_width = {}GHz".format(freq[i]/GHz,BW/GHz))
-    print("P_CMB({}GHz) ={:.7}".format(freq[i]/GHz, P_CMB(freq[i])))
-    print("P_HWP({}GHz) ={:.7}".format(freq[i]/GHz, P_HWP(freq[i])))
-    print("P_APT({}GHz) ={:.7}".format(freq[i]/GHz, P_Ape(freq[i])))
-    print("P_20K({}GHz) ={:.7}".format(freq[i]/GHz, P_20K(freq[i])))
-    print("P_m1({}GHz)  ={:.7}".format(freq[i]/GHz, P_m1(freq[i])))
-    print("P_m2({}GHz)  ={:.7}".format(freq[i]/GHz, P_m2(freq[i])))
-    print("P_2KF({}GHz) ={:.7}".format(freq[i]/GHz, P_2KF(freq[i])))
-    print("P_Lens({}GHz)={:.7}".format(freq[i]/GHz, P_Lens(freq[i])))
-    print("P_Det({}GHz)         ={:.7}".format(freq[i]/GHz,P_Det(freq[i])))
-    print("P_Opt({}GHz) ={:.7}".format(freq[i]/GHz, P_Opt(freq[i])))
-    print("Integratede_P_CMB={:.7}".format(integrate.quad(P_CMB, F-BW, F+BW)[0]/p))
-    """
-    freq 40.0 , 
-    p_cmb  7.44698507836e-24 ,
-    p_hwp 2.13635191675e-24 , 
-    p_apt 1.6458882942e-23 , 
-    p_20K 2.09293683272e-24 , 
-    p_m1 1.76179775095e-26 , 
-    p_m2 1.76269440977e-26 , 
-    p_filter 1.53348853609e-26 , 
-    p_lens 1.92529436274e-24 ,
-    p_opt 3.01110309396e-23
-    """
-    #print("int_P_Opt={0:.6}".format(value[0]/p))
-    INTEGRATE.append(integrate.quad(P_Opt, F-BW, F+BW)[0])
-    print("P_Opt={:.2}, D={}".format(INTEGRATE[i]/p, D))
+with open('sensitivity.csv', 'w') as FILE:
+    print("Freq[GHz],Band_width[GHz],D(Pixel_Pich),P_CMB,P_HWP,P_APT,P_20K,P_m1,P_m2,P_2KF,P_Lens,P_Det,P_opt,INTEG_P_CMB,INTEG_P_opt",file=FILE)
+    for i in range(len(freq)):
+        F = freq[i]
+        D = define_D(F)
+        WL = c/freq[i]
+        BW = st.width(F)
+        INTEGRATE.append(integrate.quad(P_Opt, F-BW, F+BW)[0])
+        print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(F/GHz,BW/GHz,D,P_CMB(freq[i]),P_HWP(freq[i]),P_Ape(freq[i]),\
+        P_20K(freq[i]),P_m1(freq[i]),P_m2(freq[i]),P_2KF(freq[i]),P_Lens(freq[i]),P_Det(freq[i]),P_Opt(freq[i]),\
+        integrate.quad(P_CMB, F-BW, F+BW)[0],INTEGRATE[i] ),file=FILE)
 INTEGEATE = np.array(INTEGRATE)
 
-
+df = pd.read_csv("sensitivity.csv")
+df
 #hasebe_D1 = np.array([0.36,0.29,0.28,0.38,0.28,])
 #delta = hasebe - INTEGEATE
 plt.figure()
-plt.title("P_opt")
+plt.title("Integrated P_opt")
 plt.xlabel("Freqency[GHz]")
-plt.ylabel("P_opt[pW]")
+plt.ylabel("INTEG_P_opt[pW]")
 plt.plot(freq/GHz,hasebe,"o",label="Hasebe-san")
 plt.plot(freq/GHz,INTEGEATE/p,"o",label="Takase")
 plt.grid()
